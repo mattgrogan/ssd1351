@@ -4,6 +4,11 @@ import Adafruit_GPIO.SPI as SPI
 SSD1351_WIDTH = 128
 SSD1351_HEIGHT = 128
 
+RST = 24
+DC = 23
+SPI_PORT = 0
+SPI_DEVICE = 0
+
 # Timing Delays
 SSD1351_DELAYS_HWFILL	=   3
 SSD1351_DELAYS_HWLINE   =   1
@@ -42,13 +47,29 @@ SSD1351_CMD_STOPSCROLL =        0x9E
 SSD1351_CMD_STARTSCROLL =       0x9F
 
 class Adafruit_SSD1351(object):
-	def __init__(self, cs, rs, sid, sclk, rst):
+	def __init__(self):
 		""" Initialize the SSD1351 """
-		self._cs = cs
-		self._rs = rs
-		self._sid = sid
-		self._sclk = sclk
-		self._rst = rst
+
+
+		# Dimensions
+		self.width = SSD1351_WIDTH
+		self.height = SSD1351_HEIGHT
+
+		self._pages = self.height / 8
+		self._buffer = [0] * (self.width * self.height)
+		
+		self._gpio = GPIO.get_platform_gpio()
+
+		# Set up reset pin
+		self._rst = RST
+		self._gpio.setup(self._rst, GPIO.OUT)
+
+		# Set up hardware SPI
+		self._spi = SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000)
+
+		# Set up DC pin
+		self._gpio.setup(DC, GPIO.OUT)
+		
 
 	# Drawing primitives 
 
@@ -113,6 +134,7 @@ class Adafruit_SSD1351(object):
 
 def main():
 	print "Start"
+	oled = Adafruit_SSD1351()
 
 if __name__ == "__main__":
 	main()
