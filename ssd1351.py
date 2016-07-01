@@ -68,7 +68,21 @@ class Adafruit_SSD1351(object):
 		self._spi = SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000)
 
 		# Set up DC pin
-		self._gpio.setup(DC, GPIO.OUT)
+		self._dc = DC
+		self._gpio.setup(self._dc, GPIO.OUT)
+
+	def command(self, c):
+		""" Send command byte to display """
+	
+		self._gpio.set_low(self._dc)
+		self._spi.write([c])
+
+	def data(self, c):
+
+		self._gpio.set_high(self._dc)
+		self._spi.write([c])
+	
+
 		
 
 	# Drawing primitives 
