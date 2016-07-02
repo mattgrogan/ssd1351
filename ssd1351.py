@@ -1,5 +1,9 @@
+import time
+import random
 import Adafruit_GPIO as GPIO
 import Adafruit_GPIO.SPI as SPI
+from PIL import Image
+from PIL import ImageDraw
 
 SSD1351_WIDTH = 128
 SSD1351_HEIGHT = 128
@@ -50,6 +54,8 @@ class Adafruit_SSD1351(object):
 	def __init__(self):
 		""" Initialize the SSD1351 """
 
+		print "__init__"
+
 
 		# Dimensions
 		self.width = SSD1351_WIDTH
@@ -66,6 +72,7 @@ class Adafruit_SSD1351(object):
 
 		# Set up hardware SPI
 		self._spi = SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000)
+		self._spi.set_clock_hz(8000000)
 
 		# Set up DC pin
 		self._dc = DC
@@ -81,74 +88,197 @@ class Adafruit_SSD1351(object):
 
 		self._gpio.set_high(self._dc)
 		self._spi.write([c])
+
+	def invert(self):
+		self.command(SSD1351_CMD_NORMALDISPLAY)
 	
 
+	def initialize(self):
+		""" Initialize the display """
+
+		print "Initialize..."
+
+		self.command(SSD1351_CMD_COMMANDLOCK)  # set command lock
+		self.data(0x12)
+		self.command(SSD1351_CMD_COMMANDLOCK)  # set command lock
+		self.data(0xB1)
+		self.command(SSD1351_CMD_DISPLAYOFF)   # 0xAE
+		self.command(SSD1351_CMD_CLOCKDIV)     # 0xB3
+		self.command(0xF1)  				   # 7:4 = Oscillator Frequency, 3:0 = CLK Div Ratio (A[3:0]+1 = 1..16)
+		self.command(SSD1351_CMD_MUXRATIO)
+		self.data(127)
+		self.command(SSD1351_CMD_SETREMAP)
+		self.data(0x74)
+		self.command(SSD1351_CMD_SETCOLUMN)
+		self.data(0x00)
+		self.data(0x7F)
+		self.command(SSD1351_CMD_SETROW)
+		self.data(0x00)
+		self.data(0x7F)
+
+		self.command(SSD1351_CMD_STARTLINE)  # 0xA1
+		#self.data(96)
+		self.data(0)
+
+		self.command(SSD1351_CMD_DISPLAYOFFSET) 	# 0xA2
+		self.data(0x0)
+		self.command(SSD1351_CMD_SETGPIO)
+		self.data(0x00)
+		self.command(SSD1351_CMD_FUNCTIONSELECT)
+		self.data(0x01)                         #internal (diode drop)
+		self.command(SSD1351_CMD_PRECHARGE)  		# 0xB1
+		self.command(0x32)
+		self.command(SSD1351_CMD_VCOMH)  			# 0xBE
+		self.command(0x05)
+		self.command(SSD1351_CMD_NORMALDISPLAY)  	# 0xA6
+		self.command(SSD1351_CMD_CONTRASTABC)
+		self.data(0xC8)
+		self.data(0x80)
+		self.data(0xC8)
+		self.command(SSD1351_CMD_CONTRASTMASTER)
+		self.data(0x0F)
+		self.command(SSD1351_CMD_SETVSL)
+		self.data(0xA0)
+		self.data(0xB5)
+		self.data(0x55)
+		self.command(SSD1351_CMD_PRECHARGE2)
+		self.data(0x01)
 		
-
-	# Drawing primitives 
-
-	def draw_pixel(self, x, y, color):
-		""" Draw a single pixel """
-		pass
-
-	def fill_rect(self, x0, y0, w, h, color):
-		""" Draw a filled rectangle """
-		pass
-
-	def draw_fast_hline(self, x, y, w, color):
-		""" Draw fast horizontal line? """
-		pass
-
-	def draw_fast_vline(self, x, y, h, color):
-		""" Draw fast vertical line """
-		pass
-
-	def fill_screen(self, color):
-		""" Fill the screen with color """
-		pass
-
-	# Commands
-	def invert(self):
-		pass
+		self.command(SSD1351_CMD_DISPLAYON)
 
 	def begin(self):
-		pass
+		""" Initialize the display """
+		
+		print "Beginning..."
 
-	def goto(self, x, y):
-		pass
+		self.reset()
+		self.initialize()
 
-	# Low level
+	def reset(self):
+		""" Reset the display 
+		This does not clear the display. What does it do?
 
-	def write_data(self, d):
-		pass
+		"""
 
-	def write_command(self, c):
-		pass
+		print "Resetting display..."
+	
+		# Set reset high for a millisecond
+		self._gpio.set_high(self._rst)
+		time.sleep(0.001)
 
-	def write_data_unsafe(self, d):
-		pass
+		# Set reset low for 10 ms
+		self._gpio.set_low(self._rst)
+		time.sleep(0.010)
 
-	def set_write_dir(self):
-		pass
+		# Set reset high again
+		self._gpio.set_high(self._rst)
 
-	def write8(self):
-		pass
+	def clear(self):
+		""" Clear the display """
 
-	def _spiwrite(self):
-		pass
+		print "Clear..."
+		
+		self._buffer = [0] * (self.width * self.height)
 
-	def _raw_fill_rect(self, x, y, w, h, color):
-		pass
+	def display(self):
+		""" Write the buffer to the hardware """
 
-	def _raw_fast_hline(self, x, y, w, color):
-		pass
+		print "Display..."
 
-	def _raw_fast_vline(self, x, y, h, color):
-		pass
+		self.command(SSD1351_CMD_SETCOLUMN)
+		self.data(0)
+		self.data(self.width - 1) # Column end address
+
+		self.command(SSD1351_CMD_SETROW)
+		self.data(0)
+		self.data(self.height - 1) # Row end
+
+		# Write buffer data
+		self._gpio.set_high(self._dc)
+		self.command(SSD1351_CMD_WRITERAM)
+		self._spi.write(self._buffer)
+
+	def rawfill(self, x, y, w, h, color):
+		if (x >= self.width) or (y >= self.height):
+			return
+
+		if y+h > self.height:
+			h = self.height-y-1
+
+		if x+w > self.width:
+			w = self.width-x-1
+
+		self.command(SSD1351_CMD_SETCOLUMN)
+		self.data(x)
+		self.data(x+w-1)
+
+		self.command(SSD1351_CMD_SETROW)
+		self.data(y)
+		self.data(y+h-1)
+		
+		self.command(SSD1351_CMD_WRITERAM)
+		for num in range(0, w*h):
+			self.data(color >> 8)
+			self.data(color)
+
+	def color565(self, r, g, b):
+  		c = r >> 3
+		c <<= 6
+		c |= g >> 2
+		c <<= 5
+		c |= b >> 3
+		return c
+
+	def image(self, image):
+		""" Set buffer to PIL image """
+
+		im = Image.new("RGB", (128, 128), "white")
+		draw = ImageDraw.Draw(im)
+		draw.line((0,0) + im.size, fill = 0x001F)
+		draw.text((10, 10), "Hello World!", fill = 0xFD20)
+
+		pix = im.load()
+
+		self.command(SSD1351_CMD_SETCOLUMN)
+		self.data(0)
+		self.data(self.width - 1) # Column end address
+
+		self.command(SSD1351_CMD_SETROW)
+		self.data(0)
+		self.data(self.height - 1) # Row end
+
+		self.command(SSD1351_CMD_WRITERAM)
+		
+		for row in xrange(0, self.height):
+			for col in xrange(0, self.width):
+				r,g,b = pix[col, row]
+				color = self.color565(r,g,b)
+				self.data(color >> 8)
+				self.data(color)
+		
+
+
 
 def main():
 	print "Start"
 	oled = Adafruit_SSD1351()
+
+	print "Created oled"
+	oled.begin()
+	oled.clear()
+	oled.display()
+	oled.invert()
+
+	oled.rawfill(10, 10, 40, 40, 0xFFFF)
+
+	#for i in xrange(0x0000, 0xFFFF):
+	#	j = random.randint(0x0000, 0xFFFF) 
+	#	oled.rawfill(0, 0, 128, 128, j)
+	#	time.sleep(0.001)
+
+	oled.image(None)
+
+	print "End."
 
 if __name__ == "__main__":
 	main()
