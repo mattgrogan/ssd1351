@@ -115,7 +115,6 @@ class Adafruit_SSD1351(object):
 	def initialize(self):
 		""" Initialize the display """
 
-
                 # Sending 0x12 unlocks the OLED drive IC and the driver will respond
                 # to command and memory access
 		self.command(SSD1351_CMD_COMMANDLOCK)  # set command lock
@@ -287,33 +286,22 @@ class Adafruit_SSD1351(object):
 	def load_image(self, image):
 		""" Set buffer to PIL image """
 
-        	#im = Image.open("globe.png")
-		im = image
+                # Make sure it's an RGB with correct width and height
+		image = image.resize((self.width, self.height), Image.ANTIALIAS)
+		image = image.convert("RGB")
 
-		print image.size
-		im = im.resize((self.width, self.height), Image.ANTIALIAS)
-		print image.size
-		im = im.convert("RGB")
-
-		pix = im.load()
+                # Extract the pixels
+		pix = image.load()
 
 		# Add each pixel to the buffer
 		i = 0
-
-		w, h = im.size
-
-
-
+		w, h = image.size
 		for col in xrange(0, w):
 			for row in xrange(0, h):
 				r,g,b = pix[col, row]
 				color = color565(r, g, b)
 				self._buffer[i] = color
 				i += 1
-				#self.data(color >> 8)
-				#self.data(color)
-
-                print self._buffer
 
 	def scroll(self):
                 """ Attempt to scroll """
