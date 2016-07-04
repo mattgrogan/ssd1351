@@ -14,10 +14,6 @@ DC = 23
 SPI_PORT = 0
 SPI_DEVICE = 0
 
-# Timing Delays
-SSD1351_DELAYS_HWFILL	=   3
-SSD1351_DELAYS_HWLINE   =   1
-
 # SSD1351 Commands
 SSD1351_CMD_SETCOLUMN =		0x15
 SSD1351_CMD_SETROW =   		0x75
@@ -53,7 +49,7 @@ SSD1351_CMD_STARTSCROLL =       0x9F
 
 class Adafruit_SSD1351(object):
         """ Controller for Adafruit SSD1351 1.5" Color OLED: http://adafru.it/1431 """
-        
+
 	def __init__(self, width, height, rst, dc, spi=None, spi_port=None, spi_device=None, gpio=None):
 		""" Initialize the SSD1351
 
@@ -80,7 +76,7 @@ class Adafruit_SSD1351(object):
                         self._gpio = gpio
                 else:
                         self._gpio = GPIO.get_platform_gpio()
-                        
+
                 # Set up pins
                 self._rst = rst
                 self._dc = dc
@@ -99,6 +95,7 @@ class Adafruit_SSD1351(object):
 
                 # Create buffer for images
                 self._buffer = [0] * (self.width * self.height)
+                self._current_row = 0
 
 	def command(self, c):
 		""" Send command byte to display """
@@ -124,7 +121,7 @@ class Adafruit_SSD1351(object):
 		self.command(SSD1351_CMD_COMMANDLOCK)  # set command lock
 		self.data(0xB1)
 
-                # Sleep mode on (that is, display is off)		
+                # Sleep mode on (that is, display is off)
 		self.command(SSD1351_CMD_DISPLAYOFF)   # 0xAE
 
 		# Set front clock divider and oscillator frequency
@@ -157,11 +154,11 @@ class Adafruit_SSD1351(object):
 		self.data(0x7F) # 127 in decimal
 
                 # Set display start line. We like to start at the top (zero)
-		self.command(SSD1351_CMD_STARTLINE)  
+		self.command(SSD1351_CMD_STARTLINE)
 		self.data(0) # This may be 96 for the 128x96 screen?
 
                 # Set the display offset
-		self.command(SSD1351_CMD_DISPLAYOFFSET) 	
+		self.command(SSD1351_CMD_DISPLAYOFFSET)
 		self.data(0x00)
 
 		# Set the GPIO options
@@ -170,18 +167,18 @@ class Adafruit_SSD1351(object):
 
 		# Enable or disable the VDD register.
 		self.command(SSD1351_CMD_FUNCTIONSELECT)
-		self.data(0x01)                         
+		self.data(0x01)
 
 		# Set the phase length of the OLED
-		self.command(SSD1351_CMD_PRECHARGE)  		
+		self.command(SSD1351_CMD_PRECHARGE)
 		self.command(0x32)
 
 		# Set voltage
-		self.command(SSD1351_CMD_VCOMH)  			
+		self.command(SSD1351_CMD_VCOMH)
 		self.command(0x05) # This is the reset value
 
 		# Set the display on
-		self.command(SSD1351_CMD_NORMALDISPLAY) 
+		self.command(SSD1351_CMD_NORMALDISPLAY)
 
 		# Set the contrast current for each color (0x00 to 0xFF)
 		self.command(SSD1351_CMD_CONTRASTABC)
@@ -236,7 +233,7 @@ class Adafruit_SSD1351(object):
 
 		self.reset()
 		self.initialize()
-		
+
 	def clear_buffer(self):
 		""" Clear the display buffer """
 
@@ -259,6 +256,37 @@ class Adafruit_SSD1351(object):
 		for i in xrange(len(self._buffer)):
                         self.data(self._buffer[i] >> 8)
                         self.data(self._buffer[i])
+
+        def display_scroll(self, new_row):
+                """ Add a new line to the bottom and scroll the current image up.
+                new_row should be length self.width
+                """
+                assert len(new_row) == self.width
+
+                # Increment the scrolling row
+                self._current_row = self._current_row + 1
+                if self._current_row >= self.height:
+                        self._current_row = 0
+
+                # Set scrolling to the current place
+                self.command(SSD1351_CMD_STARTLINE)
+                self.data(self._current_row)
+
+                # Set up for writing this one row
+                self.command(SSD1351_CMD_SETCOLUMN)
+                self.data(0)
+                self.data(self.width - 1) # Column end address
+
+                self.command(SSD1351_CMD_SETROW)
+                self.data(self._current_row - 1)
+                self.data(self._current_row - 1)
+
+                # Write buffer data
+                self._gpio.set_high(self._dc)
+                self.command(SSD1351_CMD_WRITERAM)
+                for i in xrange(len(new_row)):
+                        self.data(new_row[i] >> 8)
+                        self.data(new_row[i])
 
 	def rawfill(self, x, y, w, h, color):
 		if (x >= self.width) or (y >= self.height):
@@ -302,95 +330,6 @@ class Adafruit_SSD1351(object):
 				color = color565(r, g, b)
 				self._buffer[i] = color
 				i += 1
-
-	def scroll(self):
-                """ Attempt to scroll """
-                #self.command(SSD1351_CMD_STARTLINE)
-                #self.data(28)
-                #self.display()
-                #this works
-
-                for i in xrange(0, 127):
-                        self.command(SSD1351_CMD_STARTLINE)
-                        self.data(i)
-                        #self.display()
-
-                        #time.sleep(0.01)
-
-                        self.command(SSD1351_CMD_SETCOLUMN)
-                        self.data(0)
-                        self.data(self.width - 1) # Column end address
-
-                        self.command(SSD1351_CMD_SETROW)
-                        self.data(i-1)
-                        self.data(i-1) # Row end
-
-                        # Write buffer data
-                        self._gpio.set_high(self._dc)
-                        self.command(SSD1351_CMD_WRITERAM)
-                        for num in range(0, 127):
-                                self.data(0xFFFF >> 8)
-                                self.data(0xFFFF)
-
-                        #time.sleep(0.0001)
-                        #self.display()
-
-	def scroll2(self, newrow):
-                """ Attempt to scroll. Newrow is an array [127]"""
-                #self.command(SSD1351_CMD_STARTLINE)
-                #self.data(28)
-                #self.display()
-                #this works
-
-                for i in xrange(0, 127):
-                        self.command(SSD1351_CMD_STARTLINE)
-                        self.data(i)
-                        #self.display()
-
-                        #time.sleep(0.01)
-
-                        self.command(SSD1351_CMD_SETCOLUMN)
-                        self.data(0)
-                        self.data(self.width - 1) # Column end address
-
-                        self.command(SSD1351_CMD_SETROW)
-                        self.data(i-1)
-                        self.data(i-1) # Row end
-
-                        # Write buffer data
-                        self._gpio.set_high(self._dc)
-                        self.command(SSD1351_CMD_WRITERAM)
-                        for num in xrange(len(newrow)):
-                                self.data(newrow[num] >> 8)
-                                self.data(newrow[num])
-
-                        #time.sleep(0.0001)
-                        #self.display()
-
-        def scroll_reel(self, reel):
-                """ Scroll a reel indefinitely """
-
-                n_symbols = len(reel.symbols)
-
-                # Show the current symbol
-                self.image(reel.symbols[0])
-
-                current_symbol = 1
-                current_line = 0
-
-                while True:
-                        # Scroll image by one line
-                        self.command(SSD1351_CMD_STARTLINE)
-                        self.data(i)
-
-                        # Get the next line
-                        line = 1
-
-
-
-                for i in range(n_symbols):
-                        pass
-
 
 
 
@@ -453,18 +392,20 @@ def main():
 
 	oled.load_image(Image.open("globe.png"))
 	oled.display()
+	#oled.display_area(10, 10, 60, 60)
 
 	#reel = Slot_Reel()
         #im = reel.symbols[0]
         #oled.load_image(im)
         #oled.display()
 
-       # while True:
-       #         r = random.randint(0x0000, 0xFFFF)
-       #         g = random.randint(0x0000, 0xFFFF)
-       #         b = random.randint(0x0000, 0xFFFF)
-       #         color = color565(r, g, b)
-       #         oled.scroll2([color] * 128)
+        while True:
+               r = random.randint(0x0000, 0xFFFF)
+               g = random.randint(0x0000, 0xFFFF)
+               b = random.randint(0x0000, 0xFFFF)
+               color = color565(r, g, b)
+               for i in range(128):
+                       oled.display_scroll([color] * 128)
 
 	#for i in range(len(reel.symbols)):
         #        im = reel.symbols[i]
@@ -512,16 +453,5 @@ def color565(red, green=None, blue=None):
 
         return result
 
-
-def testnum():
-
-        print "RED"
-        red = color565(255,129,255)
-
-        print "\nHEX"
-        red = color565(0x0000FF)
-        
 if __name__ == "__main__":
 	main()
-        #testnum()
-
