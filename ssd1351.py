@@ -208,21 +208,18 @@ class Adafruit_SSD1351(object):
 		# Leave sleep mode
 		self.command(SSD1351_CMD_DISPLAYON)
 
-	def begin(self):
-		""" Initialize the display """
-
-		print "Beginning..."
-
-		self.reset()
-		self.initialize()
-
 	def reset(self):
-		""" Reset the display
-		This does not clear the display. What does it do?
+		""" Reset the display. When reset is pulled low, the chip is
+                initialized with the following state:
 
+                1. Display is OFF
+                2. 128 MUX display mode
+                3. Normal segment address mapping
+                4. Display start line is set to RAM address 0
+                5. Column address counter is set to 0
+                6. Normal scan direction of the COM outputs
+                7. Some commands locked
 		"""
-
-		print "Resetting display..."
 
 		# Set reset high for a millisecond
 		self._gpio.set_high(self._rst)
@@ -235,6 +232,12 @@ class Adafruit_SSD1351(object):
 		# Set reset high again
 		self._gpio.set_high(self._rst)
 
+	def begin(self):
+		""" Initialize the display """
+
+		self.reset()
+		self.initialize()
+		
 	def clear(self):
 		""" Clear the display """
 
