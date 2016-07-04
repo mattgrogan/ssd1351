@@ -107,65 +107,105 @@ class Adafruit_SSD1351(object):
 		self._spi.write([c])
 
 	def data(self, c):
+                """ Send data byte to display """
 
 		self._gpio.set_high(self._dc)
 		self._spi.write([c])
 
-	def invert(self):
-		self.command(SSD1351_CMD_NORMALDISPLAY)
-
-
 	def initialize(self):
 		""" Initialize the display """
 
-		print "Initialize..."
 
+                # Sending 0x12 unlocks the OLED drive IC and the driver will respond
+                # to command and memory access
 		self.command(SSD1351_CMD_COMMANDLOCK)  # set command lock
 		self.data(0x12)
+
+		# Not sure of the purpose of sending 0xB1 (if any)
 		self.command(SSD1351_CMD_COMMANDLOCK)  # set command lock
 		self.data(0xB1)
+
+                # Sleep mode on (that is, display is off)		
 		self.command(SSD1351_CMD_DISPLAYOFF)   # 0xAE
+
+		# Set front clock divider and oscillator frequency
 		self.command(SSD1351_CMD_CLOCKDIV)     # 0xB3
-		self.command(0xF1)  				   # 7:4 = Oscillator Frequency, 3:0 = CLK Div Ratio (A[3:0]+1 = 1..16)
+		self.command(0xF1) # 7:4 = Oscillator Frequency, 3:0 = CLK Div Ratio (A[3:0]+1 = 1..16)
+
+                # Set the multiplex ratio.
 		self.command(SSD1351_CMD_MUXRATIO)
 		self.data(127)
+
+		# Set the remapping
 		self.command(SSD1351_CMD_SETREMAP)
+		# 0x74 = 1110100
+        	# A[0] = Address increment mode. 0 = horizontal address increment mode; 1 = vertical address increment mode
+                # A[1] = Column address remap. 0 = RAM 0~127 maps to Col0~127; 1 = RAM 0~127 maps to Col127~0
+                # A[2] = Color remap. 0 = (reset) color sequence A -> B -> C; 1 = color sequence C -> B -> A
+                # A[4] = COM scan direction remap. 0 = scan from up to down, 1 = scan from bottom to up
+                # A[5] = Odd even splits of COM pins. 0 = (reset) odd/even; 1 = ?
+                # A[7:6] = Display color mode. Select either 262l, 65;, 265 color mode
 		self.data(0x74)
+
+		# Column selection
 		self.command(SSD1351_CMD_SETCOLUMN)
 		self.data(0x00)
-		self.data(0x7F)
+		self.data(0x7F) # 127 in decimal
+
+		# Row selection
 		self.command(SSD1351_CMD_SETROW)
 		self.data(0x00)
-		self.data(0x7F)
+		self.data(0x7F) # 127 in decimal
 
-		self.command(SSD1351_CMD_STARTLINE)  # 0xA1
-		#self.data(96)
-		self.data(0)
+                # Set display start line. We like to start at the top (zero)
+		self.command(SSD1351_CMD_STARTLINE)  
+		self.data(0) # This may be 96 for the 128x96 screen?
 
-		self.command(SSD1351_CMD_DISPLAYOFFSET) 	# 0xA2
-		self.data(0x0)
+                # Set the display offset
+		self.command(SSD1351_CMD_DISPLAYOFFSET) 	
+		self.data(0x00)
+
+		# Set the GPIO options
 		self.command(SSD1351_CMD_SETGPIO)
 		self.data(0x00)
+
+		# Enable or disable the VDD register.
 		self.command(SSD1351_CMD_FUNCTIONSELECT)
-		self.data(0x01)                         #internal (diode drop)
-		self.command(SSD1351_CMD_PRECHARGE)  		# 0xB1
+		self.data(0x01)                         
+
+		# Set the phase length of the OLED
+		self.command(SSD1351_CMD_PRECHARGE)  		
 		self.command(0x32)
-		self.command(SSD1351_CMD_VCOMH)  			# 0xBE
-		self.command(0x05)
-		self.command(SSD1351_CMD_NORMALDISPLAY)  	# 0xA6
+
+		# Set voltage
+		self.command(SSD1351_CMD_VCOMH)  			
+		self.command(0x05) # This is the reset value
+
+		# Set the display on
+		self.command(SSD1351_CMD_NORMALDISPLAY) 
+
+		# Set the contrast current for each color (0x00 to 0xFF)
 		self.command(SSD1351_CMD_CONTRASTABC)
 		self.data(0xC8)
 		self.data(0x80)
 		self.data(0xC8)
+
+		# Master contrast current control. The smaller the master current, the dimmer the OLED.
+		# 16 steps: 0000b to 1111b (default)
 		self.command(SSD1351_CMD_CONTRASTMASTER)
-		self.data(0x0F)
+		self.data(0x0F) # Max
+
+		# Set the low voltage
 		self.command(SSD1351_CMD_SETVSL)
 		self.data(0xA0)
 		self.data(0xB5)
 		self.data(0x55)
-		self.command(SSD1351_CMD_PRECHARGE2)
-		self.data(0x01)
 
+		# Set the second precharge period
+		self.command(SSD1351_CMD_PRECHARGE2)
+		self.data(0x01) # Minimum: 1 DCLKS
+
+		# Leave sleep mode
 		self.command(SSD1351_CMD_DISPLAYON)
 
 	def begin(self):
