@@ -351,9 +351,18 @@ class Slot_Reel(object):
                         reel_im = self.create_symbol(names[i], colors[i])
                         self.symbols.append(reel_im)
 
-                # Pixelate the images
+                cherry = Image.open("cherry.png")
+		cherry = cherry.resize((128, 128), Image.ANTIALIAS)
+		cherry = cherry.convert("RGB")
 
+                self.symbols.append(cherry)
 
+                oled = Adafruit_SSD1351(SSD1351_WIDTH,
+                                        SSD1351_HEIGHT,
+                                        rst=RST,
+                                        dc=DC,
+                                        spi_port=SPI_PORT,
+                                        spi_device=SPI_DEVICE)
 
         def create_symbol(self, name, color):
                 """ Use PIL to create a symbol """
@@ -365,6 +374,64 @@ class Slot_Reel(object):
 
 		return im
 
+	def get_row(self, symbol_index, row_number):
+                """ Get the values for a single row """
+
+                image = self.symbols[symbol_index]
+
+                pix = image.load()
+
+                w, h = image.size
+
+                row = []
+
+                for col in xrange(0, w):
+                        r,g,b = pix[col, row_number]
+			color = color565(r, g, b)
+			row.append(color)
+
+		return row
+
+	def __iter__(self):
+                """ Return an iterator """
+
+                return Slot_Reel_Iterator(self, len(self.symbols), 128) # TODO: remove hardcoded number
+
+class Slot_Reel_Iterator(object):
+        """ Iterate through the slot reel and get the rows """
+
+        def __init__(self, slot_reel, nbr_symbols, max_rows):
+                """ Initalize the iterator """
+
+                self.slot_reel = slot_reel
+                self.nbr_symbols = nbr_symbols
+                self.max_rows = max_rows
+
+                self.current_symbol = 0
+                self.current_row = 0
+
+        def __iter__(self):
+                """ Return self as an iterator """
+                return self
+
+        def next(self):
+                """ Return the next item in the iteration """
+
+                self.current_row = self.current_row + 1
+                
+                if self.current_row >= self.max_rows:
+                        # Reached the end of the current symbol
+                        self.current_symbol = self.current_symbol + 1
+                        self.current_row = 0
+
+                if self.current_symbol >= self.nbr_symbols:
+                        self.current_symbol = 0
+
+                # Return the details for the current row
+                return self.slot_reel.get_row(self.current_symbol, self.current_row)
+                        
+                
+
 
 
 
@@ -372,48 +439,33 @@ def main():
 	print "Start"
 	oled = Adafruit_SSD1351(SSD1351_WIDTH, SSD1351_HEIGHT, rst=RST, dc=DC, spi_port=SPI_PORT, spi_device=SPI_DEVICE)
 
-
-
 	print "Created oled"
 	oled.begin()
 	oled.clear_buffer()
 	oled.display()
 	#oled.invert()
 
-	#oled.rawfill(10, 10, 40, 40, 0xFFFF)
-
-	#for i in xrange(2): #xrange(0x0000, 0xFFFF):
-	#	j = random.randint(0x0000, 0xFFFF)
-	#	oled.rawfill(0, 0, 128, 128, j)
-	#	time.sleep(0.001)
-
-
-	#oled.scroll()
-
 	oled.load_image(Image.open("globe.png"))
 	oled.display()
 	#oled.display_area(10, 10, 60, 60)
 
-	#reel = Slot_Reel()
-        #im = reel.symbols[0]
-        #oled.load_image(im)
-        #oled.display()
-
-        while True:
-               r = random.randint(0x0000, 0xFFFF)
-               g = random.randint(0x0000, 0xFFFF)
-               b = random.randint(0x0000, 0xFFFF)
-               color = color565(r, g, b)
-               for i in range(128):
-                       oled.display_scroll([color] * 128)
-
-	#for i in range(len(reel.symbols)):
-        #        im = reel.symbols[i]
-        #        oled.image(im)
-        #        time.sleep(0.01)
-
         #while True:
+        #       r = random.randint(0x0000, 0xFFFF)
+        #       g = random.randint(0x0000, 0xFFFF)
+        #       b = random.randint(0x0000, 0xFFFF)
+        #       color = color565(r, g, b)
+        #       for i in range(128):
+        #               oled.display_scroll([color] * 128)
 
+
+        time.sleep(0.5)
+
+        slot_reel = Slot_Reel()
+
+        for symbol in slot_reel:
+                oled.display_scroll(symbol)
+
+        
 
 	print "End."
 
