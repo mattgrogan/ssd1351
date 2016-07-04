@@ -4,6 +4,7 @@ import Adafruit_GPIO as GPIO
 import Adafruit_GPIO.SPI as SPI
 from PIL import Image
 from PIL import ImageDraw
+from PIL import ImageFont
 
 SSD1351_WIDTH = 128
 SSD1351_HEIGHT = 128
@@ -232,10 +233,17 @@ class Adafruit_SSD1351(object):
 	def image(self, image):
 		""" Set buffer to PIL image """
 
-		im = Image.new("RGB", (128, 128), "white")
-		draw = ImageDraw.Draw(im)
-		draw.line((0,0) + im.size, fill = 0x001F)
-		draw.text((10, 10), "Hello World!", fill = 0xFD20)
+		#im = Image.new("RGB", (128, 128), "white")
+		#draw = ImageDraw.Draw(im)
+		#draw.line((0,0) + im.size, fill = 0x001F)
+
+
+		#font = ImageFont.truetype("Casino.ttf", 10)
+		#draw.text((10, 10), u"0068", fill = 0x0000, font=font)
+
+		im = Image.open("globe.png")
+		im = im.resize((self.width, self.height), Image.ANTIALIAS)
+		im = im.convert("RGB")
 
 		pix = im.load()
 
