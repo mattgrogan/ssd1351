@@ -52,32 +52,53 @@ SSD1351_CMD_STOPSCROLL =        0x9E
 SSD1351_CMD_STARTSCROLL =       0x9F
 
 class Adafruit_SSD1351(object):
-	def __init__(self):
-		""" Initialize the SSD1351 """
+        """ Controller for Adafruit SSD1351 1.5" Color OLED: http://adafru.it/1431 """
+        
+	def __init__(self, width, height, rst, dc, spi=None, spi_port=None, spi_device=None, gpio=None):
+		""" Initialize the SSD1351
 
-		print "__init__"
+                width: pixel width (128)
+                height: pixel height (128)
 
+                rst: reset pin
+                dc: dc pin
 
-		# Dimensions
-		self.width = SSD1351_WIDTH
-		self.height = SSD1351_HEIGHT
+                spi: SPI device
+                        spi_port: if SPI object is not passed, then use this spi port
+                        spi_device: if SPI object is not passed, use this spi device
 
-		self._pages = self.height / 8
-		self._buffer = [0] * (self.width * self.height)
+                gpio: GPIO device. If GPIO is not passed, use the platform gpio
 
-		self._gpio = GPIO.get_platform_gpio()
+                """
 
-		# Set up reset pin
-		self._rst = RST
-		self._gpio.setup(self._rst, GPIO.OUT)
+		# Set screen dimensions
+		self.width = width
+		self.height = height
 
-		# Set up hardware SPI
-		self._spi = SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000)
-		self._spi.set_clock_hz(8000000)
+                # Set up GPIO
+                if gpio is not None:
+                        self._gpio = gpio
+                else:
+                        self._gpio = GPIO.get_platform_gpio()
+                        
+                # Set up pins
+                self._rst = rst
+                self._dc = dc
+                self._gpio.setup(self._rst, GPIO.OUT)
+                self._gpio.setup(self._dc, GPIO.OUT)
 
-		# Set up DC pin
-		self._dc = DC
-		self._gpio.setup(self._dc, GPIO.OUT)
+                # Set up SPI
+                if spi is not None:
+                        self._spi = spi
+                else:
+                        if spi_port is None or spi_device is None:
+                                raise ValueError("spi_port and spi_dev must be set if no spi object is passed")
+                        self._spi = SPI.SpiDev(spi_port, spi_device, max_speed_hz=8000000)
+
+                        self._spi.set_clock_hz(8000000)
+
+                # Create buffer for images
+                self._buffer = [0] * (self.width * self.height)
 
 	def command(self, c):
 		""" Send command byte to display """
@@ -400,7 +421,9 @@ class Slot_Reel(object):
 
 def main():
 	print "Start"
-	oled = Adafruit_SSD1351()
+	oled = Adafruit_SSD1351(SSD1351_WIDTH, SSD1351_HEIGHT, rst=RST, dc=DC, spi_port=SPI_PORT, spi_device=SPI_DEVICE)
+
+
 
 	print "Created oled"
 	oled.begin()
