@@ -223,7 +223,14 @@ class Adafruit_SSD1351(object):
 			self.data(color)
 
 	def color565(self, r, g, b):
-  		c = r >> 3
+                """ Define color in 16-bit RGB565. Red and blue
+                have five bits each and green has 6 (since the
+                eye is more sensitive to green). 
+
+                Format: 0bRRRR RGGG GGGB BBBB
+                """
+
+ 		c = r >> 3
 		c <<= 6
 		c |= g >> 2
 		c <<= 5
@@ -263,7 +270,40 @@ class Adafruit_SSD1351(object):
 				color = self.color565(r,g,b)
 				self.data(color >> 8)
 				self.data(color)
-		
+
+	def scroll(self):
+                """ Attempt to scroll """
+                #self.command(SSD1351_CMD_STARTLINE)
+                #self.data(28)
+                #self.display()
+                #this works
+
+                for i in xrange(0, 127):
+                        self.command(SSD1351_CMD_STARTLINE)
+                        self.data(i)
+                        #self.display()
+
+                        #time.sleep(0.01)
+
+                        self.command(SSD1351_CMD_SETCOLUMN)
+                        self.data(0)
+                        self.data(self.width - 1) # Column end address
+
+                        self.command(SSD1351_CMD_SETROW)
+                        self.data(i-1)
+                        self.data(i-1) # Row end
+
+                        # Write buffer data
+                        self._gpio.set_high(self._dc)
+                        self.command(SSD1351_CMD_WRITERAM)
+                        for num in range(0, 127):
+                                self.data(0xFFFF >> 8)
+                                self.data(0xFFFF)
+                        
+                        #time.sleep(0.0001)
+                        #self.display()
+                        
+                        
 
 
 
@@ -275,16 +315,18 @@ def main():
 	oled.begin()
 	oled.clear()
 	oled.display()
-	oled.invert()
+	#oled.invert()
 
-	oled.rawfill(10, 10, 40, 40, 0xFFFF)
+	#oled.rawfill(10, 10, 40, 40, 0xFFFF)
 
-	#for i in xrange(0x0000, 0xFFFF):
+	#for i in xrange(2): #xrange(0x0000, 0xFFFF):
 	#	j = random.randint(0x0000, 0xFFFF) 
 	#	oled.rawfill(0, 0, 128, 128, j)
 	#	time.sleep(0.001)
 
 	oled.image(None)
+
+	oled.scroll()
 
 	print "End."
 
