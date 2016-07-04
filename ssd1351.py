@@ -257,7 +257,9 @@ class Adafruit_SSD1351(object):
 		# Write buffer data
 		self._gpio.set_high(self._dc)
 		self.command(SSD1351_CMD_WRITERAM)
-		self._spi.write(self._buffer)
+		for i in xrange(len(self._buffer)):
+                        self.data(self._buffer[i] >> 8)
+                        self.data(self._buffer[i])
 
 	def rawfill(self, x, y, w, h, color):
 		if (x >= self.width) or (y >= self.height):
@@ -282,40 +284,36 @@ class Adafruit_SSD1351(object):
 			self.data(color >> 8)
 			self.data(color)
 
-	def image(self, image):
+	def load_image(self, image):
 		""" Set buffer to PIL image """
 
-		#im = Image.new("RGB", (128, 128), "white")
-		#draw = ImageDraw.Draw(im)
-		#draw.line((0,0) + im.size, fill = 0x001F)
-
-
-		#font = ImageFont.truetype("Casino.ttf", 10)
-		#draw.text((10, 10), u"0068", fill = 0x0000, font=font)
-
-		#im = Image.open("globe.png")
+        	#im = Image.open("globe.png")
 		im = image
+
+		print image.size
 		im = im.resize((self.width, self.height), Image.ANTIALIAS)
+		print image.size
 		im = im.convert("RGB")
 
 		pix = im.load()
 
-		self.command(SSD1351_CMD_SETCOLUMN)
-		self.data(0)
-		self.data(self.width - 1) # Column end address
+		# Add each pixel to the buffer
+		i = 0
 
-		self.command(SSD1351_CMD_SETROW)
-		self.data(0)
-		self.data(self.height - 1) # Row end
+		w, h = im.size
 
-		self.command(SSD1351_CMD_WRITERAM)
 
-		for row in xrange(0, self.height):
-			for col in xrange(0, self.width):
+
+		for col in xrange(0, w):
+			for row in xrange(0, h):
 				r,g,b = pix[col, row]
-				color = color565(r,g,b)
-				self.data(color >> 8)
-				self.data(color)
+				color = color565(r, g, b)
+				self._buffer[i] = color
+				i += 1
+				#self.data(color >> 8)
+				#self.data(color)
+
+                print self._buffer
 
 	def scroll(self):
                 """ Attempt to scroll """
@@ -451,7 +449,7 @@ def main():
 
 	print "Created oled"
 	oled.begin()
-	#oled.clear_buffer()
+	oled.clear_buffer()
 	oled.display()
 	#oled.invert()
 
@@ -465,16 +463,20 @@ def main():
 
 	#oled.scroll()
 
-	reel = Slot_Reel()
-        im = reel.symbols[0]
-        oled.image(im)
+	oled.load_image(Image.open("globe.png"))
+	oled.display()
 
-        while True:
-                r = random.randint(0x0000, 0xFFFF)
-                g = random.randint(0x0000, 0xFFFF)
-                b = random.randint(0x0000, 0xFFFF)
-                color = color565(r, g, b)
-                oled.scroll2([color] * 128)
+	#reel = Slot_Reel()
+        #im = reel.symbols[0]
+        #oled.load_image(im)
+        #oled.display()
+
+       # while True:
+       #         r = random.randint(0x0000, 0xFFFF)
+       #         g = random.randint(0x0000, 0xFFFF)
+       #         b = random.randint(0x0000, 0xFFFF)
+       #         color = color565(r, g, b)
+       #         oled.scroll2([color] * 128)
 
 	#for i in range(len(reel.symbols)):
         #        im = reel.symbols[i]
