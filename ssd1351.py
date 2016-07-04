@@ -282,23 +282,6 @@ class Adafruit_SSD1351(object):
 			self.data(color >> 8)
 			self.data(color)
 
-	def color565(self, r, g, b):
-                """ Define color in 16-bit RGB565. Red and blue
-                have five bits each and green has 6 (since the
-                eye is more sensitive to green).
-
-                Format: 0bRRRR RGGG GGGB BBBB
-                """
-
-                print format(r, "#010b")
-
- 		c = r >> 3
-		c <<= 6
-		c |= g >> 2
-		c <<= 5
-		c |= b >> 3
-		return c
-
 	def image(self, image):
 		""" Set buffer to PIL image """
 
@@ -330,7 +313,7 @@ class Adafruit_SSD1351(object):
 		for row in xrange(0, self.height):
 			for col in xrange(0, self.width):
 				r,g,b = pix[col, row]
-				color = self.color565(r,g,b)
+				color = color565(r,g,b)
 				self.data(color >> 8)
 				self.data(color)
 
@@ -468,7 +451,7 @@ def main():
 
 	print "Created oled"
 	oled.begin()
-	oled.clear()
+	#oled.clear_buffer()
 	oled.display()
 	#oled.invert()
 
@@ -490,7 +473,7 @@ def main():
                 r = random.randint(0x0000, 0xFFFF)
                 g = random.randint(0x0000, 0xFFFF)
                 b = random.randint(0x0000, 0xFFFF)
-                color = oled.color565(r, g, b)
+                color = color565(r, g, b)
                 oled.scroll2([color] * 128)
 
 	#for i in range(len(reel.symbols)):
@@ -526,31 +509,16 @@ def color565(red, green=None, blue=None):
         # So we truncate the least significant bits
         # until there's 5 bits for red and blue
         # and six for green
-
-        print format(red, "#018b") + " - RED"
-        print format(green, "#018b") + " - GREEN"
-        print format(blue, "#018b") + " - BLUE\n"
-
         red >>= 3
         green >>= 2
         blue >>= 3
-
-        print format(red, "#018b") + " - RED"
-        print format(green, "#018b") + " - GREEN"
-        print format(blue, "#018b") + " - BLUE\n"        
 
         # Now move them to the correct locations
         red <<= 11
         green <<= 5
 
-        print format(red, "#018b") + " - RED"
-        print format(green, "#018b") + " - GREEN"
-        print format(blue, "#018b") + " - BLUE\n"
-
         # Then "or" them together
         result = red | green | blue
-
-        print format(result, "#018b") + " - Result"
 
         return result
 
@@ -564,6 +532,6 @@ def testnum():
         red = color565(0x0000FF)
         
 if __name__ == "__main__":
-	#main()
-        testnum()
+	main()
+        #testnum()
 
