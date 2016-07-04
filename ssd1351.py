@@ -503,13 +503,24 @@ def main():
 
 	print "End."
 
-def color565(red, green, blue):
+def color565(red, green=None, blue=None):
         """ Define color in 16-bit RGB565. Red and blue
         have five bits each and green has 6 (since the
         eye is more sensitive to green).
 
-        Format: RRRR RGGG GGGB BBBB
+        Bit Format: RRRR RGGG GGGB BBBB
+
+        Usage:
+        color565(red=[0,255], green=[0,255], blue=[0,255)
+        color565(0xFFE92)
         """
+
+        if green is None and blue is None:
+                # We were passed the full value in the first argument
+                hexcolor = red
+                red = (hexcolor >> 16) & 0xFF
+                green = (hexcolor >> 8) & 0xFF
+                blue = hexcolor & 0xFF
 
         # We have 8 bits coming in 0-255
         # So we truncate the least significant bits
@@ -528,7 +539,7 @@ def color565(red, green, blue):
         print format(green, "#018b") + " - GREEN"
         print format(blue, "#018b") + " - BLUE\n"        
 
-        # Now move them to the right spots
+        # Now move them to the correct locations
         red <<= 11
         green <<= 5
 
@@ -548,6 +559,9 @@ def testnum():
 
         print "RED"
         red = color565(255,129,255)
+
+        print "\nHEX"
+        red = color565(0x0000FF)
         
 if __name__ == "__main__":
 	#main()
