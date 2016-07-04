@@ -238,17 +238,13 @@ class Adafruit_SSD1351(object):
 		self.reset()
 		self.initialize()
 		
-	def clear(self):
-		""" Clear the display """
-
-		print "Clear..."
+	def clear_buffer(self):
+		""" Clear the display buffer """
 
 		self._buffer = [0] * (self.width * self.height)
 
 	def display(self):
-		""" Write the buffer to the hardware """
-
-		print "Display..."
+		""" Write the complete buffer to the display """
 
 		self.command(SSD1351_CMD_SETCOLUMN)
 		self.data(0)
@@ -293,6 +289,8 @@ class Adafruit_SSD1351(object):
 
                 Format: 0bRRRR RGGG GGGB BBBB
                 """
+
+                print format(r, "#010b")
 
  		c = r >> 3
 		c <<= 6
@@ -505,6 +503,53 @@ def main():
 
 	print "End."
 
+def color565(red, green, blue):
+        """ Define color in 16-bit RGB565. Red and blue
+        have five bits each and green has 6 (since the
+        eye is more sensitive to green).
+
+        Format: RRRR RGGG GGGB BBBB
+        """
+
+        # We have 8 bits coming in 0-255
+        # So we truncate the least significant bits
+        # until there's 5 bits for red and blue
+        # and six for green
+
+        print format(red, "#018b") + " - RED"
+        print format(green, "#018b") + " - GREEN"
+        print format(blue, "#018b") + " - BLUE\n"
+
+        red >>= 3
+        green >>= 2
+        blue >>= 3
+
+        print format(red, "#018b") + " - RED"
+        print format(green, "#018b") + " - GREEN"
+        print format(blue, "#018b") + " - BLUE\n"        
+
+        # Now move them to the right spots
+        red <<= 11
+        green <<= 5
+
+        print format(red, "#018b") + " - RED"
+        print format(green, "#018b") + " - GREEN"
+        print format(blue, "#018b") + " - BLUE\n"
+
+        # Then "or" them together
+        result = red | green | blue
+
+        print format(result, "#018b") + " - Result"
+
+        return result
+
+
+def testnum():
+
+        print "RED"
+        red = color565(255,129,255)
+        
 if __name__ == "__main__":
-	main()
+	#main()
+        testnum()
 
