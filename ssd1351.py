@@ -1,10 +1,12 @@
 import time
 import random
+import glob
 import Adafruit_GPIO as GPIO
 import Adafruit_GPIO.SPI as SPI
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
+from PIL import ImageOps
 
 SSD1351_WIDTH = 128
 SSD1351_HEIGHT = 128
@@ -341,22 +343,37 @@ class Slot_Reel(object):
 
                 self.symbols = []
 
-                names = ["Liberty Bell", "Heart", "Diamond", "Spade",
-                         "Horseshoe", "Star"
-                        ]
+                #names = ["Liberty Bell", "Heart", "Diamond", "Spade",
+                #         "Horseshoe", "Star"
+                #        ]
 
-                colors = [0x451F, 0x87F0, 0xFFF0, 0x2222, 0xFC10, 0x9659]
+                #colors = [0x451F, 0x87F0, 0xFFF0, 0x2222, 0xFC10, 0x9659]
 
-                for i in range(len(names)):
-                        reel_im = self.create_symbol(names[i], colors[i])
-                        self.symbols.append(reel_im)
+                #for i in range(len(names)):
+                #        reel_im = self.create_symbol(names[i], colors[i])
+                #        self.symbols.append(reel_im)
 
-                cherry = Image.open("cherry.png")
-		cherry = cherry.resize((128, 128), Image.ANTIALIAS)
-		cherry = cherry.convert("RGB")
+                #cherry = Image.open("cherry.png")
+		#cherry = cherry.resize((128, 128), Image.ANTIALIAS)
+		#cherry = cherry.convert("RGB")
 
-                self.symbols.append(cherry)
+                #self.symbols.append(cherry)
 
+                files = glob.glob("./icons/*.png")
+
+                for file in files:
+                        im = Image.open(file)
+                        imsize = im.size
+                        if imsize != (128, 128):
+                                print "resizing %s from %i, %i" % (file, imsize[0], imsize[1])
+                                border_128 = (128-imsize[0], 128-imsize[1])
+                                print border_128
+                                im = ImageOps.expand(im, border=(16,16, 16, 16)) #border=border_128)
+                                print "resized %s to %i, %i" % (file, im.size[0], im.size[1])
+                        #im = im.resize((128, 128), Image.ANTIALIAS)
+                        im = im.convert("RGB")
+                        self.symbols.append(im)
+                        
                 oled = Adafruit_SSD1351(SSD1351_WIDTH,
                                         SSD1351_HEIGHT,
                                         rst=RST,
