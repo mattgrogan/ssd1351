@@ -290,6 +290,8 @@ class Adafruit_SSD1351(object):
                         self.data(new_row[i] >> 8)
                         self.data(new_row[i])
 
+                time.sleep(0.005)
+
 	def rawfill(self, x, y, w, h, color):
 		if (x >= self.width) or (y >= self.height):
 			return
